@@ -22,11 +22,12 @@ import java.time.temporal.ChronoUnit;
 import static java.lang.System.*;
 
 public class WPTController extends JFrame {
-    static JButton button;
+    static JButton button, defButton;
     static JFrame jFrame;
     static JFileChooser fileChooser;
     static File gpxFile;
     static JButtonListener buttonListener = new JButtonListener();
+    static JButtonListener defButtonListener = new JButtonListener();
     static String wptFileHeader = "OziExplorer Waypoint File Version 1.1\n" +
             "WGS 84\n" +
             "Reserved 2\n" +
@@ -38,8 +39,11 @@ public class WPTController extends JFrame {
         jFrame = new JFrame();
         setLayout(new FlowLayout());
         button = new JButton("Відкрити GPX-file");
+        defButton = new JButton("favorites.gpx");
         add(button);
+        add(defButton);
         button.addActionListener(buttonListener);
+        defButton.addActionListener(defButtonListener);
     }
 
     static class JButtonListener implements ActionListener {
@@ -51,14 +55,22 @@ public class WPTController extends JFrame {
                 int returnValue = fileChooser.showOpenDialog(jFrame);
                 if (returnValue == JFileChooser.APPROVE_OPTION) {
                     gpxFile = fileChooser.getSelectedFile();
-                    try {
-                        convertGPXtoWPTandWrite(gpxFile);
-                        JOptionPane.showMessageDialog(fileChooser, "Файл успішно збережено", "Успіх", JOptionPane.INFORMATION_MESSAGE);
-                        exit(0);
-                    } catch (Exception ex) {
-                        JOptionPane.showMessageDialog(fileChooser, "Сталася халепа", "Помилка", JOptionPane.ERROR_MESSAGE);
-                    }
+                    proceedConvertAndMessaging();
                 }
+            }
+            else if (e.getSource() == defButton){
+                gpxFile = new File("s:/DOX/GPS/favorites.gpx");
+                proceedConvertAndMessaging();
+            }
+        }
+
+        private void proceedConvertAndMessaging() {
+            try {
+                convertGPXtoWPTandWrite(gpxFile);
+                JOptionPane.showMessageDialog(fileChooser, "Файл успішно збережено на S:/", "Успіх", JOptionPane.INFORMATION_MESSAGE);
+                exit(0);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(fileChooser, "Сталася халепа", "Помилка", JOptionPane.ERROR_MESSAGE);
             }
         }
 
@@ -113,7 +125,6 @@ public class WPTController extends JFrame {
                 wptLine = new StringBuilder();
                 time = ""; ele = "";
                 desc = ""; name = "";
-
             }
             newFile.close();
         }

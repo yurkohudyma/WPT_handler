@@ -8,7 +8,7 @@ public class Main
         WPTController wpt = new WPTController("Hudyma WPTproc.1");
         wpt.setVisible(true);
         wpt.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-        wpt.setSize(180,75);
+        wpt.setSize(180,105);
         wpt.setResizable(false);
         wpt.setLocationRelativeTo(null);
     }
