@@ -11,15 +11,17 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 
-import static java.lang.System.*;
+import static java.lang.System.err;
+import static java.lang.System.exit;
 
 public class WPTController extends JFrame {
     static JButton button, defButton;
@@ -67,15 +69,21 @@ public class WPTController extends JFrame {
         private void proceedConvertAndMessaging() {
             try {
                 convertGPXtoWPTandWrite(gpxFile);
-                JOptionPane.showMessageDialog(fileChooser, "Файл успішно збережено на S:/", "Успіх", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(fileChooser, "Файл успішно збережено", "Успіх", JOptionPane.INFORMATION_MESSAGE);
                 exit(0);
-            } catch (Exception ex) {
+            } catch (FileNotFoundException ex) {
+                JOptionPane.showMessageDialog(fileChooser, "Файл не знайдено", "Помилка", JOptionPane.ERROR_MESSAGE);
+            } catch (IOException ex){
                 JOptionPane.showMessageDialog(fileChooser, "Сталася халепа", "Помилка", JOptionPane.ERROR_MESSAGE);
+            }
+            catch (Exception ex){
+                JOptionPane.showMessageDialog(fileChooser, "Проблема із записом файла", "Помилка", JOptionPane.ERROR_MESSAGE);
             }
         }
 
         private void convertGPXtoWPTandWrite(File gpxFile) throws Exception {
-            FileWriter newFile = new FileWriter("s:/result.wpt", Charset.forName("windows-1251"));
+            //gpx кодується в utf-8, а кирилицю у wpt ozi розпізнає коректно з win-1251
+            FileWriter newFile = new FileWriter("s:/DOX/GPS/" + LocalDate.now() + "_TEST.wpt", Charset.forName("windows-1251"));
             var nodeList = loadDocument(gpxFile).getElementsByTagName("wpt");
             var wptLine = new StringBuilder(wptFileHeader);
             int node;
@@ -91,6 +99,7 @@ public class WPTController extends JFrame {
                         case "name" -> name = childNodeList.item(childnode).getTextContent();
                         case "ele" -> {
                             ele = childNodeList.item(childnode).getTextContent();
+                            //gpx формат зберігає висоту в метрах, ozi читає їх у футах, тому вимушена подвійна конвертація
                             double feet = Double.parseDouble(ele) * 3.28084;
                             ele = (int) feet+"";
                         }
@@ -99,6 +108,8 @@ public class WPTController extends JFrame {
                         default -> {}
                     }
                 }
+                //  Виправлення багу Ozi Explorer із нерозпізнанням великої кирилічної літери С, заміна на малу
+                name = name.startsWith("С") ? name.replace('С', 'с') : name;
                 wptLine.append(node + 1).append(comma).append(name).append(comma);
                 wptLine.append("  ").append(lat).append(comma).append("  ").append(lon).append(comma);
                 if (!time.isEmpty()) {
@@ -113,8 +124,9 @@ public class WPTController extends JFrame {
                     wptLine.append(desc).append(comma);
                 }
                 else wptLine.append(comma);
-                wptLine.append("0, 0,    0,");
+                wptLine.append(" 0, 0,    0,");
                 if (ele.isEmpty()) {
+                    //ozi конвертує відсутню у gpx висоту в -777, що практично то саме, що не подати її взагалі, що я і роблю
                     wptLine.append(comma);
                 }
                 else {
@@ -130,11 +142,13 @@ public class WPTController extends JFrame {
         }
 
         private double convertDateToDays(String time) {
+            //дуже дивна точка початку відліку днів з початку століття. крім того, додається поправка на часовий пояс, бо тут час zulu
+            //зазвичай береться 31-12-1899T00:00:00Z, видно тут якась мутка з австралійським часом
             LocalDateTime startDateTime = LocalDateTime.of(1899, 12, 30, 0, 0, 0);
             try {
                 LocalDateTime userDateTime = LocalDateTime.parse(time.substring(0, time.length() - 1));
                 long seconds = ChronoUnit.SECONDS.between(startDateTime, userDateTime);
-                return ((double) seconds)/86400;
+                return ((double) seconds/86400);
 
             } catch (DateTimeParseException e) {
                 err.println(e.getMessage());
